@@ -7,7 +7,7 @@ from unet import Unet
 from normconv import NormConv
 
 
-class Colorizer(nn.module):
+class Colorizer(nn.Module):
     def __init__(self,
                  contour_dim=1,
                  image_dim=3,
@@ -39,7 +39,7 @@ class Colorizer(nn.module):
             NormConv(self.norm_dim),
             Unet(self.norm_dim,
                  self.contour_dim,
-                 depth=3
+                 depth=3,
                  n_filters=32))
         
         self.style_encoder = nn.Sequential(
