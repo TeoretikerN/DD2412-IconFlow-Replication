@@ -12,7 +12,7 @@ class NormConv(nn.Conv2d):
                                        bias=False)
         
     def forward(self, x):
-        x0, x1, x2, x3 = input.shape
+        x0, x1, x2, x3 = x.shape
         x = x.reshape((-1, x2, x3)).unsqueeze(dim=1)
         
         weight = self.weight - self.weight.mean([-2,-1])
