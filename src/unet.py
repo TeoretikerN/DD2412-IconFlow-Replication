@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torchvision.models.resnet import BasicBlock
 import numpy as np
 
 
@@ -149,10 +150,14 @@ class Unet(nn.Module):
         n_in = self.in_channels
         for block in range(depth):
             n_out = int(self.initial_filters*(2**block))
+            
             pool = depth-block > 1
-            self.encoder_blocks.append(DownBlock(n_in,
-                                                 n_out,
-                                                 pool=pool))
+            if n_out == n_in:
+                self.encoder_blocks.append(BasicBlock(n_in, n_out, downsample=nn.Identity(),norm_layer=norm_layer)
+            else:
+                self.encoder_blocks.append(DownBlock(n_in,
+                                                     n_out,
+                                                     pool=pool))
             n_in = n_out
         
         for block in range(depth-1):
