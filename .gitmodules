@@ -1,0 +1,3 @@
+[submodule "IconFlow"]
+	path = IconFlow
+	url = https://github.com/djosix/IconFlow.git

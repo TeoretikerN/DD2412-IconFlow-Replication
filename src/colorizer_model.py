@@ -4,8 +4,8 @@ import torch.nn.functional as F
 import numpy as np
 import pytorch_lightning as pl
 from torchvision.models import resnet18, resnet50
-from unet import Unet
-from normconv import NormConv
+from .unet import Unet
+from .normconv import NormConv
 
 
 class Colorizer(pl.LightningModule):
