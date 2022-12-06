@@ -196,8 +196,8 @@ if __name__ == "__main__":
     Testing
     """
     from torch.autograd import Variable
-    model = Unet(6, 6, 5, 64)
-    x = Variable(torch.FloatTensor(np.random.random((1, 6, 420, 420))))
+    model = Unet(1, 16, 5, 64)
+    x = Variable(torch.FloatTensor(np.random.random((5, 1, 128, 128))))
     out = model(x)
     loss = torch.sum(out)
     loss.backward()
