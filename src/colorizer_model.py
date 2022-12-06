@@ -42,7 +42,7 @@ class Colorizer(pl.LightningModule):
             NormConv(self.norm_dim),
             Unet(self.norm_dim,
                  self.contour_dim,
-                 depth=3,
+                 depth=3
                  n_filters=32))
         
         self.style_encoder = nn.Sequential(
