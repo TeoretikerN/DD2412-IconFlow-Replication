@@ -15,7 +15,7 @@ def get_down_conv(in_channels, out_channels, kernels, stride=1, padding=0, bias=
                      padding=padding,
                      bias=bias)
 
-def get_up_conv(in_channels, out_channels, scale=2, mode='bilinear'):
+def get_up_conv(in_channels, out_channels, scale=2, mode='nearest'):
     # Iconflow repo uses "nearest" mode (not mentioned in paper),
     # "bilinear" might be too costly.
     return nn.Sequential(nn.Upsample(mode=mode,
@@ -61,7 +61,7 @@ def autocrop(encoder_layer: torch.Tensor, decoder_layer: torch.Tensor):
 
 # Up and Down blocks
 class DownBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, pool=True, bias=True, padding=0):
+    def __init__(self, in_channels, out_channels, pool=True, bias=True, padding=1):
         super(DownBlock, self).__init__()
 
         self.in_channels = in_channels
@@ -98,7 +98,7 @@ class DownBlock(nn.Module):
 
 
 class UpBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, bias=True, padding=0):
+    def __init__(self, in_channels, out_channels, bias=True, padding=1):
         super(UpBlock, self).__init__()
 
         self.in_channels = in_channels
@@ -153,7 +153,7 @@ class Unet(nn.Module):
             
             pool = depth-block > 1
             if n_out == n_in:
-                self.encoder_blocks.append(BasicBlock(n_in, n_out, downsample=nn.Identity(),norm_layer=norm_layer)
+                self.encoder_blocks.append(BasicBlock(n_in, n_out, downsample=nn.Identity(),norm_layer=norm_layer))
             else:
                 self.encoder_blocks.append(DownBlock(n_in,
                                                      n_out,
@@ -196,7 +196,9 @@ if __name__ == "__main__":
     Testing
     """
     from torch.autograd import Variable
+    from torchinfo import summary
     model = Unet(1, 16, 5, 64)
+    print(summary(model, input_size=(5, 1, 128, 128)))
     x = Variable(torch.FloatTensor(np.random.random((5, 1, 128, 128))))
     out = model(x)
     loss = torch.sum(out)
