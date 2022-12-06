@@ -9,7 +9,7 @@ from src.colorizer_model import Colorizer
 
 
 device = torch.device('cuda')
-num_workers = 2 # Threads to use for data loading
+num_workers = 4 # Threads to use for data loading
 dataset_dir = "./IconFlow/dataset"
 batch_size = 32
 image_size = 128
@@ -74,10 +74,10 @@ if __name__ == "__main__":
 
     # summary(encoder, (1, image_size, image_size))
     # summary(decoder, (20, image_size//4, image_size//4))
-    # autoencoder = TestModel(encoder, decoder)
+    # model = TestModel(encoder, decoder)
 
     model = Colorizer()
-    summary(model.contour_encoder, input_size=(16,1,128,128))
+    summary(model.contour_encoder, input_size=(batch_size,1,image_size,image_size))
 
     trainer = pl.Trainer(max_epochs=1, accelerator="gpu")
     trainer.fit(model=model, train_dataloaders=train_loader)

@@ -27,7 +27,7 @@ class Colorizer(pl.LightningModule):
         self.style_dim = style_dim
         self.decoder_dim = decoder_dim
         self.decoder_depth = decoder_depth
-        self.resnet = resnet18() if toy_model else resnet50()
+        self.resnet = resnet18(num_classes=style_dim) if toy_model else resnet50(num_classes=style_dim)
         self.lr = lr
         
         self.contour_encoder = nn.Sequential(
@@ -68,11 +68,15 @@ class Colorizer(pl.LightningModule):
     def forward(self, contour, image):
         enc_c = self.contour_encoder(contour)
         enc_s = self.style_encoder(image)
-        enc_s_cc = enc_s.roll(1, 0).contiguous()
         
-        c0, c1 = enc_c.shape
-        s0, s1, s2, s3 = enc_s.shape
-        enc_c = enc_c.unsqueeze(-1).unsqueeze(-1).expand([c0,c1,s2,s3])
+        width, height = enc_c.shape[2:]
+        # print("enc_c shape:", enc_c.shape)
+        # print("enc_s shape:", enc_s.shape)
+        batch_size = enc_s.shape[0]
+
+        enc_s = enc_s.unsqueeze(-1).unsqueeze(-1).expand([batch_size, self.style_dim, width, height])
+        enc_s_cc = enc_s.roll(1, 0).contiguous()
+        # enc_c = enc_c.expand([c0,c1,s2,s3])
         z = torch.cat([enc_c, enc_s], 1)
         z = torch.transpose(z,1,3)
         z = torch.transpose(z,1,2)

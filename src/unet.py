@@ -2,8 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchvision.models.resnet import BasicBlock
-import numpy as np
-
 
 ## Building_blocks
 # Helper functions
@@ -195,6 +193,7 @@ if __name__ == "__main__":
     """
     Testing
     """
+    import numpy as np
     from torch.autograd import Variable
     from torchinfo import summary
     model = Unet(1, 16, 5, 64)
