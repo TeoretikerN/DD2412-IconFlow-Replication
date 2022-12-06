@@ -188,7 +188,7 @@ class Unet(nn.Module):
 
 if __name__ == "__main__":
     """
-    Running a test
+    Testing
     """
     from torch.autograd import Variable
     model = Unet(6, 6, 5, 64)
