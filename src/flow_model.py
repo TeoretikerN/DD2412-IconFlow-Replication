@@ -67,7 +67,6 @@ class NormalizingFlow(pl.LightningModule):
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=self.lr)
 
-
 if __name__ == "__main__":
     """
     Testing

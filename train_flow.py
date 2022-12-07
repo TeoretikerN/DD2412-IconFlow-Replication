@@ -1,10 +1,9 @@
 import os
+import pytorch_lightning as pl
 import torch
 from torch import optim, nn, utils, Tensor, device
-import pytorch_lightning as pl
-from IconFlow.iconflow.dataset import IconContourDataset, StylePaletteDataset
-from IconFlow.iconflow.utils.train import random_sampler
 from torchinfo import summary
+from IconFlow.iconflow.dataset import IconContourDataset, StylePaletteDataset
 from src.colorizer_model import Colorizer
 from src.flow_model import NormalizingFlow
 
@@ -13,10 +12,9 @@ device = torch.device('cuda')
 num_workers = 4 # Threads to use for data loading
 dataset_dir = "./IconFlow/dataset"
 batch_size = 32
-image_size = 128
+image_size = 64
 train_ratio = 0.9
 max_samples = 1000
-
 
 if __name__ == "__main__":
     # Dataset initialization copied from iconflow __main__.py
@@ -34,7 +32,7 @@ if __name__ == "__main__":
     train_loader = utils.data.DataLoader(
         flow_train_set,
         batch_size=batch_size,
-        sampler=random_sampler(len(flow_train_set)),
+        sampler=utils.data.RandomSampler(flow_train_set),
         pin_memory=(device.type == 'cuda'),
         num_workers=num_workers
     )
@@ -45,10 +43,8 @@ if __name__ == "__main__":
         break
 
     colorizer = Colorizer()
-    summary(colorizer.contour_encoder, input_size=(batch_size, 1, image_size, image_size))
-
     flow = NormalizingFlow(colorizer)
-    summary(flow.flow)
+    summary(flow)
 
     trainer = pl.Trainer(max_epochs=1, accelerator="gpu")
     trainer.fit(model=flow, train_dataloaders=train_loader)
