@@ -3,16 +3,16 @@ import torch
 from torch import optim, nn, utils, Tensor, device
 import pytorch_lightning as pl
 from IconFlow.iconflow.dataset import IconContourDataset
-from IconFlow.iconflow.utils.train import random_sampler
 from torchinfo import summary
 from src.colorizer_model import Colorizer
 
 
 device = torch.device('cuda')
-num_workers = 4 # Threads to use for data loading
+num_workers = 2 # Threads to use for data loading
+# prefetch_factor = 2
 dataset_dir = "./IconFlow/dataset"
 batch_size = 32
-image_size = 128
+image_size = 64
 train_ratio = 0.9
 
 # # Test model based on https://pytorch-lightning.readthedocs.io/en/stable/starter/introduction.html
@@ -54,7 +54,7 @@ if __name__ == "__main__":
     train_loader = utils.data.DataLoader(
         net_train_set,
         batch_size=batch_size,
-        sampler=random_sampler(len(net_train_set)),
+        sampler=utils.data.RandomSampler(net_train_set),
         pin_memory=(device.type == 'cuda'),
         num_workers=num_workers
     )
@@ -65,6 +65,8 @@ if __name__ == "__main__":
         print(image.shape)
         print(contour.shape)
         break
+
+    print("Num batches:", len(train_loader.dataset))
 
     # Define model
     # encoder = nn.Sequential(nn.Conv2d(1, 10, 3, stride=2, padding=1), nn.Conv2d(10, 20, 3, stride=2, padding=1))
@@ -79,6 +81,6 @@ if __name__ == "__main__":
     model = Colorizer()
     summary(model.contour_encoder, input_size=(batch_size,1,image_size,image_size))
 
-    trainer = pl.Trainer(max_epochs=1, accelerator="gpu")
+    trainer = pl.Trainer(max_epochs=10, accelerator="gpu")
     trainer.fit(model=model, train_dataloaders=train_loader)
 
