@@ -15,27 +15,6 @@ batch_size = 32
 image_size = 64
 train_ratio = 0.9
 
-# # Test model based on https://pytorch-lightning.readthedocs.io/en/stable/starter/introduction.html
-# class TestModel(pl.LightningModule):
-#     def __init__(self, encoder, decoder):
-#         super().__init__()
-#         self.encoder = encoder
-#         self.decoder = decoder
-
-#     def training_step(self, batch, batch_idx):
-#         # training_step defines the train loop.
-#         # it is independent of forward
-#         image, contour = batch
-#         z = self.encoder(contour)
-#         colorized = self.decoder(z)
-#         loss = nn.functional.mse_loss(colorized, image)
-#         # Logging to TensorBoard by default
-#         self.log("train_loss", loss)
-#         return loss
-
-#     def configure_optimizers(self):
-#         optimizer = optim.Adam(self.parameters(), lr=1e-3)
-#         return optimizer
 
 if __name__ == "__main__":
     # Dataset initialization copied from iconflow __main__.py
@@ -44,7 +23,8 @@ if __name__ == "__main__":
     train_set = IconContourDataset(data_dir, image_size, split=(0, train_ratio))
     test_set = IconContourDataset(data_dir, image_size, split=(train_ratio, 1))
     net_train_set = IconContourDataset(
-        data_dir, image_size,
+        data_dir,
+        image_size,
         random_crop=True,
         random_transpose=True,
         random_color=True,
@@ -60,10 +40,8 @@ if __name__ == "__main__":
     )
 
     for image, contour in train_loader:
-        print(type(image))
-        print(type(contour))
-        print(image.shape)
-        print(contour.shape)
+        print('image type:', type(image), 'image shape:', image.shape)
+        print('contour type:', type(contour), 'contour shape:', contour.shape)
         break
 
     print("Num batches:", len(train_loader.dataset))
@@ -79,7 +57,7 @@ if __name__ == "__main__":
     # model = TestModel(encoder, decoder)
 
     model = Colorizer()
-    summary(model.contour_encoder, input_size=(batch_size,1,image_size,image_size))
+    summary(model.contour_encoder, input_size=(batch_size, 1, image_size, image_size))
 
     trainer = pl.Trainer(max_epochs=10, accelerator="gpu")
     trainer.fit(model=model, train_dataloaders=train_loader)

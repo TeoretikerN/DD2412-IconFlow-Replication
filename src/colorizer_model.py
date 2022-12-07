@@ -93,10 +93,13 @@ class Colorizer(pl.LightningModule):
         out_cc = torch.transpose(out_cc,1,3)
         out_cc = torch.transpose(out_cc,2,3)
         return out, out_cc
-    
+
     def countour_extract(self, image):
         return self.contour_extractor(image)
-    
+
+    def style_encode(self, image):
+        return self.style_encoder(image)
+
     def training_step(self, batch, batch_idx):
         loss = 0
         image, contour = batch
