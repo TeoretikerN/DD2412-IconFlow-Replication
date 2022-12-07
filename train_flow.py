@@ -39,11 +39,9 @@ if __name__ == "__main__":
         num_workers=num_workers
     )
 
-    for image, contour in train_loader:
-        print(type(image))
-        print(type(contour))
-        print(image.shape)
-        print(contour.shape)
+    for image, location in train_loader:
+        print('image type:', type(image), 'image shape:', image.shape)
+        print('location type:', type(location), 'location shape:', location.shape)
         break
 
     colorizer = Colorizer()
