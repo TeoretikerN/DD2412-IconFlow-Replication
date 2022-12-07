@@ -129,5 +129,5 @@ dmypy.json
 .pyre/
 
 # PyTorch Lightning logs
-lightning_logs/
+iconflow_logs/
 

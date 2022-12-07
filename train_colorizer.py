@@ -2,6 +2,7 @@ import multiprocessing
 import os
 import pytorch_lightning as pl
 import torch
+from pytorch_lightning.loggers import TensorBoardLogger
 from torch import optim, nn, utils, Tensor, device
 from torchinfo import summary
 from IconFlow.iconflow.dataset import IconContourDataset
@@ -48,6 +49,6 @@ if __name__ == "__main__":
     model = Colorizer()
     summary(model.contour_encoder, input_size=(batch_size,1,image_size,image_size))
 
-    trainer = pl.Trainer(max_epochs=100, accelerator="gpu")
+    logger = TensorBoardLogger("iconflow_logs", name="colorizer")
+    trainer = pl.Trainer(logger=logger, max_epochs=100, accelerator="gpu")
     trainer.fit(model=model, train_dataloaders=train_loader)
-
