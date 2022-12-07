@@ -44,7 +44,8 @@ if __name__ == "__main__":
     train_set = IconContourDataset(data_dir, image_size, split=(0, train_ratio))
     test_set = IconContourDataset(data_dir, image_size, split=(train_ratio, 1))
     net_train_set = IconContourDataset(
-        data_dir, image_size,
+        data_dir,
+        image_size,
         random_crop=True,
         random_transpose=True,
         random_color=True,
@@ -77,7 +78,7 @@ if __name__ == "__main__":
     # model = TestModel(encoder, decoder)
 
     model = Colorizer()
-    summary(model.contour_encoder, input_size=(batch_size,1,image_size,image_size))
+    summary(model.contour_encoder, input_size=(batch_size, 1, image_size, image_size))
 
     trainer = pl.Trainer(max_epochs=1, accelerator="gpu")
     trainer.fit(model=model, train_dataloaders=train_loader)
