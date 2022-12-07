@@ -1,14 +1,15 @@
+import multiprocessing
 import os
+import pytorch_lightning as pl
 import torch
 from torch import optim, nn, utils, Tensor, device
-import pytorch_lightning as pl
-from IconFlow.iconflow.dataset import IconContourDataset
 from torchinfo import summary
+from IconFlow.iconflow.dataset import IconContourDataset
 from src.colorizer_model import Colorizer
 
 
 device = torch.device('cuda')
-num_workers = 2 # Threads to use for data loading
+num_workers = multiprocessing.cpu_count() # Threads to use for data loading
 # prefetch_factor = 2
 dataset_dir = "./IconFlow/dataset"
 batch_size = 32

@@ -1,3 +1,4 @@
+import multiprocessing
 import os
 import pytorch_lightning as pl
 import torch
@@ -9,7 +10,7 @@ from src.flow_model import NormalizingFlow
 
 
 device = torch.device('cuda')
-num_workers = 4 # Threads to use for data loading
+num_workers = multiprocessing.cpu_count() # Threads to use for data loading
 dataset_dir = "./IconFlow/dataset"
 batch_size = 32
 image_size = 64
@@ -46,5 +47,5 @@ if __name__ == "__main__":
     flow = NormalizingFlow(colorizer)
     summary(flow)
 
-    trainer = pl.Trainer(max_epochs=1, accelerator="gpu")
+    trainer = pl.Trainer(max_epochs=10, accelerator="gpu")
     trainer.fit(model=flow, train_dataloaders=train_loader)
