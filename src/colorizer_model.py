@@ -123,10 +123,12 @@ class Colorizer(pl.LightningModule):
         rec_loss = F.mse_loss(colorized, image)
         
         # Contour
-        contour_loss = torch.stack([F.mse_loss(extracted_contour, contour)]).mean()
+        contour_loss = F.mse_loss(extracted_contour, contour)
+        #contour_loss = torch.stack([F.mse_loss(extracted_contour, contour)]).mean()
         
         # Consistency criterion
-        consistency_loss = torch.stack([F.mse_loss(extracted_contour_cc, contour)]).mean()
+        #consistency_loss = torch.stack([F.mse_loss(extracted_contour_cc, contour)]).mean()
+        consistency_loss = F.mse_loss(extracted_contour_cc, contour)
         
         loss = rec_loss + contour_loss + consistency_loss
         
