@@ -22,7 +22,7 @@ class Colorizer(pl.LightningModule):
                  style_dim=48,
                  decoder_dim=32,
                  decoder_depth=4,
-                 range_restrict=True,
+                 range_restrict=False,
                  toy_model=False,
                  lr=1e-4):
         super(Colorizer, self).__init__()
@@ -124,10 +124,8 @@ class Colorizer(pl.LightningModule):
         
         # Contour
         contour_loss = F.mse_loss(extracted_contour, contour)
-        #contour_loss = torch.stack([F.mse_loss(extracted_contour, contour)]).mean()
         
         # Consistency criterion
-        #consistency_loss = torch.stack([F.mse_loss(extracted_contour_cc, contour)]).mean()
         consistency_loss = F.mse_loss(extracted_contour_cc, contour)
         
         loss = rec_loss + contour_loss + consistency_loss
