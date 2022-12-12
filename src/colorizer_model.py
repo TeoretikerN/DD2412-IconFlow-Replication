@@ -4,10 +4,15 @@ import torch.nn.functional as F
 import numpy as np
 import pytorch_lightning as pl
 from torchvision.models import resnet18, resnet50
+from torchvision.utils import make_grid
 from .unet import Unet
 from .normconv import NormConv
 
-
+class DivideByTwo(nn.Module):
+    def forward(self, input):
+        # Divide all elements in the input tensor by 2
+        return input / 2
+    
 class Colorizer(pl.LightningModule):
     def __init__(self,
                  contour_dim=1,
@@ -17,6 +22,7 @@ class Colorizer(pl.LightningModule):
                  style_dim=48,
                  decoder_dim=32,
                  decoder_depth=4,
+                 range_restrict=True,
                  toy_model=False,
                  lr=1e-4):
         super(Colorizer, self).__init__()
@@ -27,6 +33,7 @@ class Colorizer(pl.LightningModule):
         self.style_dim = style_dim
         self.decoder_dim = decoder_dim
         self.decoder_depth = decoder_depth
+        self.range_restrict = range_restrict
         self.resnet = resnet18(num_classes=style_dim) if toy_model else resnet50(num_classes=style_dim)
         self.lr = lr
         
@@ -53,6 +60,8 @@ class Colorizer(pl.LightningModule):
         self.decoder_list = self.add_decoder_layer([], self.embedding_dim + self.style_dim)
         for _ in range(self.decoder_depth - 2):
             self.decoder_list = self.add_decoder_layer(self.decoder_list, self.decoder_dim)
+            if self.range_restrict: #Force in range (-.5, .5)
+                self.decoder_list.append(DivideByTwo())
         self.decoder_list.append(nn.Linear(self.decoder_dim, self.image_dim))
         self.decoder_list.append(nn.Tanh())
                 
@@ -62,7 +71,6 @@ class Colorizer(pl.LightningModule):
         decoder_list.append(nn.Linear(dim_in, self.decoder_dim))
         decoder_list.append(nn.LayerNorm(self.decoder_dim))
         decoder_list.append(nn.ReLU())
-        # TODO: Force in range (-.5, .5), divide by 2?
         return decoder_list
     
     def forward(self, contour, image):
@@ -114,11 +122,11 @@ class Colorizer(pl.LightningModule):
         # MSE
         rec_loss = F.mse_loss(colorized, image)
         
-        # Contour (TODO: Check shape, might need stack + mean)
-        contour_loss = F.mse_loss(extracted_contour, contour)
+        # Contour
+        contour_loss = torch.stack([F.mse_loss(extracted_contour, contour)]).mean()
         
-        # Consistency criterion (TODO: Check shape, might need stack + mean)
-        consistency_loss = F.mse_loss(extracted_contour_cc, contour)
+        # Consistency criterion
+        consistency_loss = torch.stack([F.mse_loss(extracted_contour_cc, contour)]).mean()
         
         loss = rec_loss + contour_loss + consistency_loss
         
@@ -129,6 +137,28 @@ class Colorizer(pl.LightningModule):
         self.log('Loss', loss)
         
         return loss
-    
+
+    def validation_step(self, batch, batch_idx):
+        image, contour = batch
+
+        reconstructions = []
+        for i in range(image.shape[0]):
+            rolled_image = torch.roll(image, i, 0) # roll on batch dim
+            reconstruction = self(contour, rolled_image)
+            reconstructions.append(reconstruction[0])
+
+        display_columns = [
+            image,
+            contour.expand(-1, 3, -1, -1),
+            *reconstructions
+        ]
+        display_image = (torch.stack(display_columns, 1) + 0.5).clamp(0, 1)
+        display_image = display_image.flatten(0, 1)
+        display_image = make_grid(display_image, len(display_columns))
+        
+        self.logger.experiment.add_image('generated_images', display_image, self.current_epoch) 
+        
+        return display_image
+
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=self.lr)
