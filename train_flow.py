@@ -23,6 +23,7 @@ if __name__ == "__main__":
     # https://github.com/djosix/IconFlow
     data_dir = os.path.join(dataset_dir, 'data')
     train_set = IconContourDataset(data_dir, image_size, split=(0, train_ratio))
+    
     test_set = IconContourDataset(data_dir, image_size, split=(train_ratio, 1))
     flow_train_set = StylePaletteDataset(
         data_dir,
@@ -34,7 +35,7 @@ if __name__ == "__main__":
     train_loader = utils.data.DataLoader(
         flow_train_set,
         batch_size=batch_size,
-        sampler=utils.data.RandomSampler(flow_train_set),
+        sampler=utils.data.RandomSampler(flow_train_set, replacement=True, num_samples=len(train_set)),
         pin_memory=(device.type == 'cuda'),
         num_workers=num_workers
     )
@@ -49,5 +50,5 @@ if __name__ == "__main__":
     summary(flow)
 
     logger = TensorBoardLogger("iconflow_logs", name="flow")
-    trainer = pl.Trainer(logger=logger, max_epochs=10, accelerator="gpu")
+    trainer = pl.Trainer(logger=logger, max_epochs=200, accelerator="gpu")
     trainer.fit(model=flow, train_dataloaders=train_loader)
