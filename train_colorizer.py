@@ -9,12 +9,13 @@ from IconFlow.iconflow.dataset import IconContourDataset
 from src.colorizer_model import Colorizer
 
 
-device = torch.device('cuda')
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 num_workers = multiprocessing.cpu_count() # Threads to use for data loading
 # prefetch_factor = 2
 dataset_dir = "./IconFlow/dataset"
-batch_size = 32
+batch_size = 64
 image_size = 64
+validation_images = 10
 train_ratio = 0.9
 
 if __name__ == "__main__":
@@ -39,6 +40,14 @@ if __name__ == "__main__":
         num_workers=num_workers
     )
 
+    val_loader = utils.data.DataLoader(
+        train_set,
+        batch_size=validation_images,
+        sampler=utils.data.RandomSampler(train_set, num_samples=validation_images),
+        pin_memory=(device.type == 'cuda'),
+        num_workers=num_workers
+    )
+
     for image, contour in train_loader:
         print(type(image))
         print(type(contour))
@@ -50,5 +59,5 @@ if __name__ == "__main__":
     summary(model.contour_encoder, input_size=(batch_size,1,image_size,image_size))
 
     logger = TensorBoardLogger("iconflow_logs", name="colorizer")
-    trainer = pl.Trainer(logger=logger, max_epochs=100, accelerator="gpu")
-    trainer.fit(model=model, train_dataloaders=train_loader)
+    trainer = pl.Trainer(logger=logger, max_epochs=1000, accelerator="gpu")
+    trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)
