@@ -24,6 +24,7 @@ class Colorizer(pl.LightningModule):
                  decoder_depth=4,
                  range_restrict=False,
                  toy_model=False,
+                 use_contour_extractor=True,
                  lr=1e-4):
         super(Colorizer, self).__init__()
         self.contour_dim = contour_dim
@@ -35,6 +36,7 @@ class Colorizer(pl.LightningModule):
         self.decoder_depth = decoder_depth
         self.range_restrict = range_restrict
         self.resnet = resnet18(num_classes=style_dim) if toy_model else resnet50(num_classes=style_dim)
+        self.use_contour_extractor = use_contour_extractor
         self.lr = lr
         
         self.contour_encoder = nn.Sequential(
@@ -45,12 +47,13 @@ class Colorizer(pl.LightningModule):
             nn.Tanh()
         )
         
-        self.contour_extractor = nn.Sequential(
-            NormConv(self.norm_dim),
-            Unet(self.norm_dim,
-                 self.contour_dim,
-                 depth=3,
-                 n_filters=32))
+        if use_contour_extractor:
+            self.contour_extractor = nn.Sequential(
+                NormConv(self.norm_dim),
+                Unet(self.norm_dim,
+                     self.contour_dim,
+                     depth=3,
+                     n_filters=32))
         
         self.style_encoder = nn.Sequential(
             self.resnet,
@@ -112,28 +115,34 @@ class Colorizer(pl.LightningModule):
         loss = 0
         image, contour = batch
         colorized, colorized_cc = self(contour, image)
-        extracted_contour = self.contour_extractor(image)
         
-        # Get contour for consistency criterion (not pushing gradients)
-        self.contour_extractor.requires_grad_(False)
-        extracted_contour_cc = self.contour_extractor(colorized_cc)
-        self.contour_extractor.requires_grad_(True)
-        
+        contour_loss, consistency_loss = 0.0, 0.0
+
+        if self.use_contour_extractor:
+            extracted_contour = self.contour_extractor(image)
+
+            # Get contour for consistency criterion (not pushing gradients)
+            self.contour_extractor.requires_grad_(False)
+            extracted_contour_cc = self.contour_extractor(colorized_cc)
+            self.contour_extractor.requires_grad_(True)
+
+            # Contour
+            contour_loss = F.mse_loss(extracted_contour, contour)
+
+            # Consistency criterion
+            consistency_loss = F.mse_loss(extracted_contour_cc, contour)
+
         # MSE
         rec_loss = F.mse_loss(colorized, image)
-        
-        # Contour
-        contour_loss = F.mse_loss(extracted_contour, contour)
-        
-        # Consistency criterion
-        consistency_loss = F.mse_loss(extracted_contour_cc, contour)
         
         loss = rec_loss + contour_loss + consistency_loss
         
         # Logging to tensorboard
         self.log('Rec_Loss', rec_loss)
-        self.log('Contour_Loss', contour_loss)
-        self.log('Consistency_Loss', consistency_loss)
+        if self.use_contour_extractor:
+            self.log('Contour_Loss', contour_loss)
+            self.log('Consistency_Loss', consistency_loss)
+
         self.log('Loss', loss)
         
         return loss
