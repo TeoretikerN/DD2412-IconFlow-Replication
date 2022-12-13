@@ -14,7 +14,7 @@ from src.flow_model import NormalizingFlow
 device = torch.device('cuda')
 num_workers = multiprocessing.cpu_count() # Threads to use for data loading
 dataset_dir = "./IconFlow/dataset"
-batch_size = 32
+batch_size = 64
 image_size = 64
 train_ratio = 0.9
 max_samples = 1000
