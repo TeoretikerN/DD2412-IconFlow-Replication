@@ -2,6 +2,7 @@ import multiprocessing
 import os
 import pytorch_lightning as pl
 import torch
+from glob import glob
 from pytorch_lightning.loggers import TensorBoardLogger
 from torch import optim, nn, utils, Tensor, device
 from torchinfo import summary
@@ -17,14 +18,19 @@ batch_size = 32
 image_size = 64
 train_ratio = 0.9
 max_samples = 1000
+colorizer_version = 0
 
 if __name__ == "__main__":
+    # Get the path for the colorizer model checkpoint
+    colorizer_path = f'iconflow_logs/colorizer/version_{colorizer_version}/checkpoints/'
+    colorizer_path = sorted(glob(colorizer_path + '*.ckpt'))[-1]
+
     # Dataset initialization copied from iconflow __main__.py
     # https://github.com/djosix/IconFlow
     data_dir = os.path.join(dataset_dir, 'data')
     train_set = IconContourDataset(data_dir, image_size, split=(0, train_ratio))
-    
     test_set = IconContourDataset(data_dir, image_size, split=(train_ratio, 1))
+    
     flow_train_set = StylePaletteDataset(
         data_dir,
         image_size,
@@ -40,15 +46,60 @@ if __name__ == "__main__":
         num_workers=num_workers
     )
 
+
+    class FlowValidationSet(utils.data.IterableDataset):
+        def __init__(self, validation_images=4):
+            self.validation_images = validation_images
+
+        def from_image(self, image):
+            from torchvision.transforms import functional
+            return functional.to_tensor(image) - 0.5
+
+        def __iter__(self):
+            import random
+            import numpy as np
+            from IconFlow.iconflow.utils.style import get_style_image
+            k = 4
+            condition_train = random.choice(train_set)[1]
+            condition_test = random.choice(test_set)[1]
+            condition_batch = [condition_train] * self.validation_images \
+                              + [condition_test] * self.validation_images
+            condition = torch.stack(condition_batch) # .to(device)
+
+            selected_style_names = np.random.choice(flow_train_set.style_names, size=(k + k))
+
+            selected_style_images = torch.stack([
+                self.from_image(get_style_image(flow_train_set.style_to_cmb[name], name))
+                for name in selected_style_names
+            ])
+            
+
+            location = torch.stack([
+                flow_train_set.position_to_condition(flow_train_set.style_to_pos[name])
+                for name in selected_style_names
+            ]) # .to(device)
+            print(condition.shape)
+            yield condition, selected_style_images, location
+
+    val_loader = utils.data.DataLoader(
+        FlowValidationSet(),
+        #batch_size=validation_images,
+        #sampler=utils.data.RandomSampler(train_set, num_samples=validation_images),
+        pin_memory=(device.type == 'cuda'),
+        num_workers=num_workers
+    )
+
     for image, location in train_loader:
         print('image type:', type(image), 'image shape:', image.shape)
         print('location type:', type(location), 'location shape:', location.shape)
         break
 
-    colorizer = Colorizer()
+    # Load the trained colorizer
+    colorizer = Colorizer.load_from_checkpoint(colorizer_path)
+
     flow = NormalizingFlow(colorizer)
     summary(flow)
 
     logger = TensorBoardLogger("iconflow_logs", name="flow")
     trainer = pl.Trainer(logger=logger, max_epochs=200, accelerator="gpu")
-    trainer.fit(model=flow, train_dataloaders=train_loader)
+    trainer.fit(model=flow, train_dataloaders=train_loader, val_dataloaders=val_loader)
