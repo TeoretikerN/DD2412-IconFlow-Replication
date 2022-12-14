@@ -4,7 +4,7 @@ import os
 import pytorch_lightning as pl
 import random
 import torch
-import torch.nn.functional as F
+import torchvision.transforms.functional as F
 from glob import glob
 from pytorch_lightning.loggers import TensorBoardLogger
 from torch import optim, nn, utils, Tensor, device
@@ -95,7 +95,7 @@ if __name__ == "__main__":
     # Load the trained colorizer
     colorizer = Colorizer.load_from_checkpoint(colorizer_path)
 
-    flow = NormalizingFlow(colorizer, device=device)
+    flow = NormalizingFlow(colorizer)
     summary(flow)
 
     logger = TensorBoardLogger("iconflow_logs", name="flow")
