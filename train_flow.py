@@ -58,6 +58,9 @@ if __name__ == "__main__":
         def from_image(self, image):
             return F.to_tensor(image) - 0.5
 
+        def __len__(self):
+            return 1
+
         def __iter__(self):
             val_images = self.validation_images
             condition_train = random.choice(train_set)[1]
@@ -81,8 +84,7 @@ if __name__ == "__main__":
 
     val_loader = utils.data.DataLoader(
         FlowValidationSet(),
-        #batch_size=validation_images,
-        #sampler=utils.data.RandomSampler(train_set, num_samples=validation_images),
+        batch_size=1,
         pin_memory=(device.type == 'cuda'),
         num_workers=num_workers
     )
