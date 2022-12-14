@@ -85,17 +85,15 @@ class NormalizingFlow(pl.LightningModule):
         temperatures = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]
 
         self.colorizer.eval()
-        self.flow.eval()
         display_columns = [selected_style_images]
 
         for t in temperatures:
-            with torch.no_grad():
-                z = (Normal(0, 1).sample([condition.shape[0], self.style_dim]) * t).to(condition)
-                enc_contour = self.colorizer.contour_encoder(condition)
-                enc_style = self(z, location, reverse=True)[0]
-                reconstruction = self.img_decode(enc_contour, enc_style)
-                display_columns.append(reconstruction)
-                del z, enc_contour, enc_style, reconstruction
+            z = (Normal(0, 1).sample([condition.shape[0], self.style_dim]) * t).to(condition)
+            enc_contour = self.colorizer.contour_encoder(condition)
+            enc_style = self(z, location, reverse=True)[0]
+            reconstruction = self.img_decode(enc_contour, enc_style)
+            display_columns.append(reconstruction)
+            del z, enc_contour, enc_style, reconstruction
 
         display_image = torch.clamp(torch.cat(display_columns) + 0.5, 0, 1)
         display_image = make_grid(display_image, nrow=(len(temperatures) + 1))
