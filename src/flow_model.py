@@ -9,14 +9,13 @@ from IconFlow.iconflow.model.styleflow.flow import build_model
 
 
 class NormalizingFlow(pl.LightningModule):
-    
+
     def __init__(self,
                  colorizer,
                  width=512,
                  depth=4,
                  condition_size=2,
-                 lr=1e-4,
-                 device='cpu'):
+                 lr=1e-4):
         super(NormalizingFlow, self).__init__()
         self.colorizer = colorizer
         self.width = width
@@ -24,7 +23,6 @@ class NormalizingFlow(pl.LightningModule):
         self.style_dim = colorizer.style_dim
         self.condition_size = condition_size
         self.lr = lr
-        self.device_z = device
 
         self.flow = build_model(
             self.style_dim,
@@ -40,7 +38,7 @@ class NormalizingFlow(pl.LightningModule):
 
         z, dlogp = self.flow(style, location, zeros, reverse)
         return z, dlogp
-    
+
     def img_decode(self, enc_c, enc_s):
         width, height = enc_c.shape[2:]
         batch_size = enc_c.shape[0]
@@ -55,9 +53,8 @@ class NormalizingFlow(pl.LightningModule):
         out = torch.transpose(out,2,3)
         
         return out
-    
+
     def training_step(self, batch, batch_idx):
-        loss = 0
         image, location = batch
 
         # Get style vector for training CNF (not pushing gradients)
@@ -93,7 +90,7 @@ class NormalizingFlow(pl.LightningModule):
 
         for t in temperatures:
             with torch.no_grad():
-                z = (Normal(0, 1).sample([condition.shape[0], self.style_dim]) * t).to(self.device_z)
+                z = (Normal(0, 1).sample([condition.shape[0], self.style_dim]) * t).to(condition)
                 enc_contour = self.colorizer.contour_encoder(condition)
                 enc_style = self(z, location, reverse=True)[0]
                 reconstruction = self.img_decode(enc_contour, enc_style)
