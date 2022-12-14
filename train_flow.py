@@ -1,12 +1,16 @@
 import multiprocessing
+import numpy as np
 import os
 import pytorch_lightning as pl
+import random
 import torch
+import torch.nn.functional as F
 from glob import glob
 from pytorch_lightning.loggers import TensorBoardLogger
 from torch import optim, nn, utils, Tensor, device
 from torchinfo import summary
 from IconFlow.iconflow.dataset import IconContourDataset, StylePaletteDataset
+from IconFlow.iconflow.utils.style import get_style_image
 from src.colorizer_model import Colorizer
 from src.flow_model import NormalizingFlow
 
@@ -52,19 +56,13 @@ if __name__ == "__main__":
             self.validation_images = validation_images
 
         def from_image(self, image):
-            from torchvision.transforms import functional
-            return functional.to_tensor(image) - 0.5
+            return F.to_tensor(image) - 0.5
 
         def __iter__(self):
-            import random
-            import numpy as np
-            from IconFlow.iconflow.utils.style import get_style_image
-
             val_images = self.validation_images
             condition_train = random.choice(train_set)[1]
             condition_test = random.choice(test_set)[1]
-            condition_batch = [condition_train] * val_images \
-                              + [condition_test] * val_images
+            condition_batch = [condition_train] * val_images + [condition_test] * val_images
             condition = torch.stack(condition_batch)
 
             selected_style_names = np.random.choice(flow_train_set.style_names, size=(val_images * 2))
