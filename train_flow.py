@@ -18,7 +18,7 @@ batch_size = 64
 image_size = 64
 train_ratio = 0.9
 max_samples = 1000
-colorizer_version = 0
+colorizer_version = 12
 
 if __name__ == "__main__":
     # Get the path for the colorizer model checkpoint
@@ -59,26 +59,26 @@ if __name__ == "__main__":
             import random
             import numpy as np
             from IconFlow.iconflow.utils.style import get_style_image
-            k = 4
+
+            val_images = self.validation_images
             condition_train = random.choice(train_set)[1]
             condition_test = random.choice(test_set)[1]
-            condition_batch = [condition_train] * self.validation_images \
-                              + [condition_test] * self.validation_images
-            condition = torch.stack(condition_batch) # .to(device)
+            condition_batch = [condition_train] * val_images \
+                              + [condition_test] * val_images
+            condition = torch.stack(condition_batch)
 
-            selected_style_names = np.random.choice(flow_train_set.style_names, size=(k + k))
+            selected_style_names = np.random.choice(flow_train_set.style_names, size=(val_images * 2))
 
             selected_style_images = torch.stack([
                 self.from_image(get_style_image(flow_train_set.style_to_cmb[name], name))
                 for name in selected_style_names
             ])
-            
 
             location = torch.stack([
                 flow_train_set.position_to_condition(flow_train_set.style_to_pos[name])
                 for name in selected_style_names
-            ]) # .to(device)
-            print(condition.shape)
+            ])
+
             yield condition, selected_style_images, location
 
     val_loader = utils.data.DataLoader(
@@ -97,9 +97,9 @@ if __name__ == "__main__":
     # Load the trained colorizer
     colorizer = Colorizer.load_from_checkpoint(colorizer_path)
 
-    flow = NormalizingFlow(colorizer)
+    flow = NormalizingFlow(colorizer, device=device)
     summary(flow)
 
     logger = TensorBoardLogger("iconflow_logs", name="flow")
-    trainer = pl.Trainer(logger=logger, max_epochs=200, accelerator="gpu")
+    trainer = pl.Trainer(logger=logger, max_epochs=1000, accelerator="gpu")
     trainer.fit(model=flow, train_dataloaders=train_loader, val_dataloaders=val_loader)

@@ -12,7 +12,7 @@ class DivideByTwo(nn.Module):
     def forward(self, input):
         # Divide all elements in the input tensor by 2
         return input / 2
-    
+
 class Colorizer(pl.LightningModule):
     def __init__(self,
                  contour_dim=1,
@@ -24,7 +24,7 @@ class Colorizer(pl.LightningModule):
                  decoder_depth=4,
                  range_restrict=False,
                  toy_model=False,
-                 use_contour_extractor=False,
+                 use_contour_extractor=True,
                  lr=1e-4):
         super(Colorizer, self).__init__()
         self.contour_dim = contour_dim
@@ -79,10 +79,7 @@ class Colorizer(pl.LightningModule):
     def forward(self, contour, image):
         enc_c = self.contour_encoder(contour)
         enc_s = self.style_encoder(image)
-        out = self.pixel_decode(enc_c, enc_s)
-        return out
-
-    def pixel_decode(self, enc_c, enc_s):
+        
         width, height = enc_c.shape[2:]
         # print("enc_c shape:", enc_c.shape)
         # print("enc_s shape:", enc_s.shape)
@@ -107,9 +104,6 @@ class Colorizer(pl.LightningModule):
         out_cc = torch.transpose(out_cc,1,3)
         out_cc = torch.transpose(out_cc,2,3)
         return out, out_cc
-
-    def countour_encode(self, image):
-        return self.contour_encoder(image)
 
     def countour_extract(self, image):
         return self.contour_extractor(image)

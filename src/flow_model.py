@@ -1,6 +1,7 @@
 import math
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import pytorch_lightning as pl
 from torch.distributions import Normal
 from torchvision.utils import make_grid
@@ -14,7 +15,8 @@ class NormalizingFlow(pl.LightningModule):
                  width=512,
                  depth=4,
                  condition_size=2,
-                 lr=1e-4):
+                 lr=1e-4,
+                 device='cpu'):
         super(NormalizingFlow, self).__init__()
         self.colorizer = colorizer
         self.width = width
@@ -22,6 +24,7 @@ class NormalizingFlow(pl.LightningModule):
         self.style_dim = colorizer.style_dim
         self.condition_size = condition_size
         self.lr = lr
+        self.device_z = device
 
         self.flow = build_model(
             self.style_dim,
@@ -37,7 +40,22 @@ class NormalizingFlow(pl.LightningModule):
 
         z, dlogp = self.flow(style, location, zeros, reverse)
         return z, dlogp
+    
+    def img_decode(self, enc_c, enc_s):
+        width, height = enc_c.shape[2:]
+        batch_size = enc_c.shape[0]
 
+        enc_s = enc_s.unsqueeze(-1).unsqueeze(-1).expand([batch_size, self.style_dim, width, height])
+        z = torch.cat([enc_c, enc_s], 1)
+        z = torch.transpose(z,1,3)
+        z = torch.transpose(z,1,2)
+        
+        out = self.colorizer.decoder(z)
+        out = torch.transpose(out,1,3)
+        out = torch.transpose(out,2,3)
+        
+        return out
+    
     def training_step(self, batch, batch_idx):
         loss = 0
         image, location = batch
@@ -46,13 +64,9 @@ class NormalizingFlow(pl.LightningModule):
         self.colorizer.style_encoder.requires_grad_(False)
         encoded_style = self.colorizer.style_encode(image)
         self.colorizer.style_encoder.requires_grad_(True)
-
-        #print('location shape:', location.shape)
-        #print('encoded shape:', encoded_style.shape)
-
+        
         self.flow.train()
         z, dlogp = self(encoded_style, location)
-        #print('z shape:', z.shape, 'dlogp shape:', dlogp.shape)
 
         logpz = Normal(0, 1).log_prob(z).sum(-1)
         logpx = logpz - dlogp
@@ -68,6 +82,7 @@ class NormalizingFlow(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         condition = batch[0][0]
         selected_style_images = batch[1][0]
+        selected_style_images = F.interpolate(selected_style_images, scale_factor=0.5, mode="bicubic")
         location = batch[2][0]
 
         temperatures = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]
@@ -75,23 +90,20 @@ class NormalizingFlow(pl.LightningModule):
         self.colorizer.eval()
         self.flow.eval()
         display_columns = [selected_style_images]
-        base_distribution = Normal(0, 1)
 
         for t in temperatures:
             with torch.no_grad():
-                z = base_distribution.sample([condition.shape[0], self.colorizer.style_dim]) * t
-                z = z.to(condition)
-                enc_contour = self.colorizer.countour_encode(condition)
-                enc_style = self(z, location, reverse=True)
-                reconstruction = self.colorizer.pixel_decode(enc_contour, enc_style)
-                display_columns.append(reconstruction[0])
-                del z, embed, style, reconstruction
+                z = (Normal(0, 1).sample([condition.shape[0], self.style_dim]) * t).to(self.device_z)
+                enc_contour = self.colorizer.contour_encoder(condition)
+                enc_style = self(z, location, reverse=True)[0]
+                reconstruction = self.img_decode(enc_contour, enc_style)
+                display_columns.append(reconstruction)
+                del z, enc_contour, enc_style, reconstruction
 
         display_image = torch.clamp(torch.cat(display_columns) + 0.5, 0, 1)
         display_image = make_grid(display_image, nrow=(len(temperatures) + 1))
 
         self.logger.experiment.add_image('flow_images', display_image, self.current_epoch)
-        self.logger.experiment.flush()
 
         return display_image
 
